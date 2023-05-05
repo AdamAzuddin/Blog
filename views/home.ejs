@@ -3,10 +3,13 @@
 <p><%= content %></p>
 
 <% posts.forEach(function (post){%>
-    <div class="item">
-        <h1><%= post.title %></h1>
-        <p><%= post.content.substring(0,100)+ "..." %> <a href="posts/<%=post.title%>">Read More</a></p>
-    </div>
+        <div class="item">
+            <h1 ><%= post.title %></h1>
+            <h2 hidden> <%= post._id%></h2>
+            <p ><%= post.content.substring(0,100)+ "..." %> <a href="/posts/<%=post._id%>" >Read More</a></p>
+            <input type="hidden" name="id" value=<%=post._id%>>
+        </div>
+    
 <%}) %>
     
 

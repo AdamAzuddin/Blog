@@ -3,6 +3,20 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const ejs = require("ejs");
+const mongoose = require("mongoose");
+const PORT = process.env.PORT || 3000;
+
+mongoose.set("strictQuery", false);
+
+const connectDB = async () => {
+  try {
+    const conn = await mongoose.connect("mongodb://127.0.0.1:27017/blogDB");
+    console.log(`MongoDB connected at ${conn.connection.host}`);
+  } catch (err) {
+    console.log(err);
+    process.exit(1);
+  }
+};
 
 const homeStartingContent =
   "Lacus vel facilisis volutpat est velit egestas dui id ornare. Semper auctor neque vitae tempus quam. Sit amet cursus sit amet dictum sit amet justo. Viverra tellus in hac habitasse. Imperdiet proin fermentum leo vel orci porta. Donec ultrices tincidunt arcu non sodales neque sodales ut. Mattis molestie a iaculis at erat pellentesque adipiscing. Magnis dis parturient montes nascetur ridiculus mus mauris vitae ultricies. Adipiscing elit ut aliquam purus sit amet luctus venenatis lectus. Ultrices vitae auctor eu augue ut lectus arcu bibendum at. Odio euismod lacinia at quis risus sed vulputate odio ut. Cursus mattis molestie a iaculis at erat pellentesque adipiscing.";
@@ -12,7 +26,19 @@ const contactContent =
   "Scelerisque eleifend donec pretium vulputate sapien. Rhoncus urna neque viverra justo nec ultrices. Arcu dui vivamus arcu felis bibendum. Consectetur adipiscing elit duis tristique. Risus viverra adipiscing at in tellus integer feugiat. Sapien nec sagittis aliquam malesuada bibendum arcu vitae. Consequat interdum varius sit amet mattis. Iaculis nunc sed augue lacus. Interdum posuere lorem ipsum dolor sit amet consectetur adipiscing elit. Pulvinar elementum integer enim neque. Ultrices gravida dictum fusce ut placerat orci nulla. Mauris in aliquam sem fringilla ut morbi tincidunt. Tortor posuere ac ut consequat semper viverra nam libero.";
 
 const app = express();
-let posts = [];
+
+const postSchema = new mongoose.Schema({
+  title: {
+    required: true,
+    type: String,
+  },
+  content: {
+    required: true,
+    type: String,
+  },
+});
+
+const Post = mongoose.model("Post", postSchema);
 
 function toKebabCase(str) {
   return str
@@ -27,10 +53,17 @@ app.use(express.static("public"));
 app.set("view engine", "ejs");
 
 app.get("/", function (req, res) {
-  res.render("home", {
-    content: homeStartingContent,
-    posts: posts,
-  });
+  const posts = Post.find({}).exec();
+  posts
+    .then((posts) => {
+      res.render("home", {
+        content: homeStartingContent,
+        posts: posts,
+      });
+    })
+    .catch((err) => {
+      console.log(err);
+    });
 });
 
 app.get("/about", function (req, res) {
@@ -49,28 +82,47 @@ app.get("/compose", function (req, res) {
   res.render("compose");
 });
 
-app.get("/posts/:title", function (req, res) {
-  const postExist = posts.find(
-    (obj) => toKebabCase(obj.title) === req.params.title
-  );
+app.get("/posts/:title",async function (req, res) {
+  console.log(req.params.title);
+  
+  const postID = req.params.title;
+  const posts = await Post.find({ _id: postID }).exec();
+  
+  
+  console.log(posts);
+  const title = posts[0].title
+  const content = posts[0].content
+  console.log(posts[0].title);
+  console.log(posts[0].content);
+  
+  res.render("post", { title: title, content: content });
+  /* posts
+    .then((post) => {
+      const title = req.body.title;
 
-  if (postExist) {
-    console.log("Match Found!");
-    const title = postExist.title;
-    const content = postExist.content
-    res.render("post", { title: title, content: content });
-  }
+      console.log(title);
+
+      const content = post.content;
+
+      console.log(content);
+    })
+    .catch((err) => {
+      console.log(err);
+    }); */
 });
 
 app.post("/compose", function (req, res) {
-  const post = {
+  const newPost = new Post({
     title: req.body.postTitle,
     content: req.body.postBody,
-  };
-  posts.push(post);
+  });
+
+  newPost.save();
   res.redirect("/");
 });
 
-app.listen(3000, function () {
-  console.log("Server started on port 3000");
+connectDB().then(() => {
+  app.listen(PORT, function () {
+    console.log("Server started at port " + PORT);
+  });
 });
